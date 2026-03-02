@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Multi Device Control</title>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f0f0f;
+      color: white;
+      text-align: center;
+    }
+
+    .card {
+      background: #1c1c1c;
+      padding: 20px;
+      margin: 20px auto;
+      width: 450px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.6);
+    }
+
+    button {
+      padding: 6px 12px;
+      margin: 4px;
+      border-radius: 8px;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .green { background: #2ecc71; }
+    .red { background: #e74c3c; }
+    .blue { background: #3498db; }
+
+    .online { color: #2ecc71; }
+    .offline { color: #e74c3c; }
+
+    .top-control {
+      margin: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>🔥 Multi Device Control</h1>
+
+<div class="top-control">
+  <button class="green" onclick="setAllUseAppLogic(true)">Grant ALL</button>
+  <button class="red" onclick="setAllUseAppLogic(false)">Revoke ALL</button>
+</div>
+
+<div id="devicesContainer"></div>
+
+<script>
+  var firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "baucaua-ad1e1.firebaseapp.com",
+    databaseURL: "https://baucaua-ad1e1-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "baucaua-ad1e1"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  var database = firebase.database();
+  var devicesRef = database.ref("devices");
+  var devicesContainer = document.getElementById("devicesContainer");
+
+  devicesRef.on("value", function(snapshot) {
+    devicesContainer.innerHTML = "";
+
+    snapshot.forEach(function(child) {
+      var deviceId = child.key;
+      var data = child.val();
+
+      var card = document.createElement("div");
+      card.className = "card";
+
+      card.innerHTML = `
+        <h3>${deviceId}</h3>
+        <p>Status: <span class="${data.online ? 'online' : 'offline'}">
+          ${data.online ? 'Online' : 'Offline'}
+        </span></p>
+
+        <hr>
+
+        <p>UseAppLogic (Cấp quyền): ${data.useAppLogic ? 'ON' : 'OFF'}</p>
+        <button class="${data.useAppLogic ? 'red' : 'green'}"
+          onclick="toggleUseAppLogic('${deviceId}', ${data.useAppLogic})">
+          ${data.useAppLogic ? 'Thu hồi quyền' : 'Cấp quyền'}
+        </button>
+
+        <hr>
+
+        <p>Force Enabled: ${data.forceEnabled}</p>
+        <button onclick="toggleField('${deviceId}','forceEnabled', ${data.forceEnabled})">
+          Toggle Force
+        </button>
+
+        <p>Force Value: ${data.forceValue}</p>
+        ${createValueButtons(deviceId,'forceValue')}
+
+        <hr>
+
+        <p>Block Enabled: ${data.blockEnabled}</p>
+        <button onclick="toggleField('${deviceId}','blockEnabled', ${data.blockEnabled})">
+          Toggle Block
+        </button>
+
+        <p>Block Value: ${data.blockValue}</p>
+        ${createValueButtons(deviceId,'blockValue')}
+      `;
+
+      devicesContainer.appendChild(card);
+    });
+  });
+
+  function toggleField(deviceId, field, currentValue) {
+    database.ref("devices/" + deviceId).update({
+      [field]: !currentValue
+    });
+  }
+
+  function toggleUseAppLogic(deviceId, currentValue) {
+    database.ref("devices/" + deviceId).update({
+      useAppLogic: !currentValue
+    });
+  }
+
+  function setAllUseAppLogic(value) {
+    devicesRef.once("value").then(function(snapshot){
+      snapshot.forEach(function(child){
+        devicesRef.child(child.key).update({
+          useAppLogic: value
+        });
+      });
+    });
+  }
+
+  function createValueButtons(deviceId, field) {
+    let buttons = "";
+    for(let i=0;i<=5;i++){
+      buttons += `
+        <button class="blue"
+          onclick="setValue('${deviceId}','${field}',${i})">
+          ${i}
+        </button>
+      `;
+    }
+    return buttons;
+  }
+
+  function setValue(deviceId, field, value) {
+    database.ref("devices/" + deviceId).update({
+      [field]: value
+    });
+  }
+
+</script>
+
+</body>
+</html>
