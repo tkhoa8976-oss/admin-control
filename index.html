@@ -18,30 +18,32 @@
       background: #1c1c1c;
       padding: 20px;
       margin: 20px auto;
-      width: 450px;
+      width: 500px;
       border-radius: 15px;
       box-shadow: 0 0 20px rgba(0,0,0,0.6);
     }
 
     button {
-      padding: 6px 12px;
-      margin: 4px;
+      padding: 6px 10px;
+      margin: 3px;
       border-radius: 8px;
       border: none;
       font-weight: bold;
       cursor: pointer;
     }
 
+    button:disabled{
+      opacity:0.3;
+      cursor:not-allowed;
+    }
+
     .green { background: #2ecc71; }
     .red { background: #e74c3c; }
     .blue { background: #3498db; }
+    .orange { background: #f39c12; }
 
     .online { color: #2ecc71; }
     .offline { color: #e74c3c; }
-
-    .top-control {
-      margin: 20px;
-    }
   </style>
 </head>
 
@@ -49,116 +51,166 @@
 
 <h1>🔥 Multi Device Control</h1>
 
-<div class="top-control">
-  <button class="green" onclick="setAllUseAppLogic(true)">Grant ALL</button>
-  <button class="red" onclick="setAllUseAppLogic(false)">Revoke ALL</button>
-</div>
+<button class="green" onclick="setAllUseAppLogic(true)">Grant ALL</button>
+<button class="red" onclick="setAllUseAppLogic(false)">Revoke ALL</button>
 
 <div id="devicesContainer"></div>
 
 <script>
-  var firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "baucaua-ad1e1.firebaseapp.com",
-    databaseURL: "https://baucaua-ad1e1-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "baucaua-ad1e1"
-  };
+var firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "baucaua-ad1e1.firebaseapp.com",
+  databaseURL: "https://baucaua-ad1e1-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "baucaua-ad1e1"
+};
 
-  firebase.initializeApp(firebaseConfig);
-  var database = firebase.database();
-  var devicesRef = database.ref("devices");
-  var devicesContainer = document.getElementById("devicesContainer");
+firebase.initializeApp(firebaseConfig);
+var database = firebase.database();
+var devicesRef = database.ref("devices");
+var container = document.getElementById("devicesContainer");
 
-  devicesRef.on("value", function(snapshot) {
-    devicesContainer.innerHTML = "";
+const animals = ["cá ","cua","tôm","gà","bầu","nai"];
 
-    snapshot.forEach(function(child) {
-      var deviceId = child.key;
-      var data = child.val();
+devicesRef.on("value", function(snapshot) {
+  container.innerHTML = "";
 
-      var card = document.createElement("div");
-      card.className = "card";
+  snapshot.forEach(function(child) {
 
-      card.innerHTML = `
-        <h3>${deviceId}</h3>
-        <p>Status: <span class="${data.online ? 'online' : 'offline'}">
-          ${data.online ? 'Online' : 'Offline'}
-        </span></p>
+    let id = child.key;
+    let d = child.val() || {};
 
-        <hr>
+    let card = document.createElement("div");
+    card.className = "card";
 
-        <p>UseAppLogic (Cấp quyền): ${data.useAppLogic ? 'ON' : 'OFF'}</p>
-        <button class="${data.useAppLogic ? 'red' : 'green'}"
-          onclick="toggleUseAppLogic('${deviceId}', ${data.useAppLogic})">
-          ${data.useAppLogic ? 'Thu hồi quyền' : 'Cấp quyền'}
-        </button>
+    card.innerHTML = `
+      <h3>${id}</h3>
+      <p>Status: <span class="${d.online ? 'online':'offline'}">
+      ${d.online ? 'Online':'Offline'}</span></p>
 
-        <hr>
+      <button class="red" onclick="deleteDevice('${id}')">XÓA THIẾT BỊ</button>
 
-        <p>Force Enabled: ${data.forceEnabled}</p>
-        <button onclick="toggleField('${deviceId}','forceEnabled', ${data.forceEnabled})">
-          Toggle Force
-        </button>
+      <hr>
 
-        <p>Force Value: ${data.forceValue}</p>
-        ${createValueButtons(deviceId,'forceValue')}
+      <p>UseAppLogic: ${d.useAppLogic ? 'ON':'OFF'}</p>
+      <button class="${d.useAppLogic?'red':'green'}"
+        onclick="toggle('${id}','useAppLogic',${d.useAppLogic})">
+        ${d.useAppLogic?'Thu hồi':'Cấp quyền'}
+      </button>
 
-        <hr>
+      <hr>
 
-        <p>Block Enabled: ${data.blockEnabled}</p>
-        <button onclick="toggleField('${deviceId}','blockEnabled', ${data.blockEnabled})">
-          Toggle Block
-        </button>
+      <p>Advanced Control: ${d.advancedEnabled ? 'ON':'OFF'}</p>
+      <button class="orange"
+        onclick="toggle('${id}','advancedEnabled',${d.advancedEnabled})">
+        Toggle Advanced
+      </button>
 
-        <p>Block Value: ${data.blockValue}</p>
-        ${createValueButtons(deviceId,'blockValue')}
-      `;
+      <hr>
 
-      devicesContainer.appendChild(card);
-    });
+      <h4>Ép số lượng (TỔNG = 3)</h4>
+      ${createForceCountUI(id,d)}
+
+      <hr>
+
+      <h4>Chặn con</h4>
+      ${createBlockUI(id,d)}
+    `;
+
+    container.appendChild(card);
   });
+});
 
-  function toggleField(deviceId, field, currentValue) {
-    database.ref("devices/" + deviceId).update({
-      [field]: !currentValue
-    });
+function toggle(id, field, current) {
+  database.ref("devices/"+id).update({
+    [field]: !current
+  });
+}
+
+function deleteDevice(id){
+  if(confirm("Xóa thiết bị này?")){
+    database.ref("devices/"+id).remove();
   }
+}
 
-  function toggleUseAppLogic(deviceId, currentValue) {
-    database.ref("devices/" + deviceId).update({
-      useAppLogic: !currentValue
-    });
-  }
-
-  function setAllUseAppLogic(value) {
-    devicesRef.once("value").then(function(snapshot){
-      snapshot.forEach(function(child){
-        devicesRef.child(child.key).update({
-          useAppLogic: value
-        });
+function setAllUseAppLogic(val){
+  devicesRef.once("value").then(function(snap){
+    snap.forEach(function(child){
+      devicesRef.child(child.key).update({
+        useAppLogic: val
       });
     });
+  });
+}
+
+/* ===========================
+   🔥 FIX LOGIC ÉP TỔNG = 3
+=========================== */
+
+function createForceCountUI(id,data){
+  let html = "";
+
+  let total = 0;
+  for(let i=0;i<6;i++){
+    total += data["forceCount_"+i] || 0;
   }
 
-  function createValueButtons(deviceId, field) {
-    let buttons = "";
-    for(let i=0;i<=5;i++){
-      buttons += `
+  for(let i=0;i<6;i++){
+    let current = data["forceCount_"+i] || 0;
+
+    html += `<div>${animals[i]}: ${current} `;
+
+    for(let n=0;n<=3;n++){
+
+      // Nếu chọn số nhỏ hơn hoặc bằng current → luôn cho phép (giảm xuống)
+      let allow = true;
+
+      if(n > current){
+        // kiểm tra nếu tăng lên thì có vượt quá 3 không
+        let newTotal = total - current + n;
+        if(newTotal > 3){
+          allow = false;
+        }
+      }
+
+      html += `
         <button class="blue"
-          onclick="setValue('${deviceId}','${field}',${i})">
-          ${i}
+        ${allow ? "" : "disabled"}
+        onclick="setValue('${id}','forceCount_${i}',${n})">
+        ${n}
         </button>
       `;
     }
-    return buttons;
+
+    html += `</div>`;
   }
 
-  function setValue(deviceId, field, value) {
-    database.ref("devices/" + deviceId).update({
-      [field]: value
-    });
+  return html;
+}
+
+/* ========================= */
+
+function createBlockUI(id,data){
+  let html = "";
+
+  for(let i=0;i<6;i++){
+    let current = data["blockAnimal_"+i] || false;
+
+    html += `
+      <button class="${current?'red':'green'}"
+      onclick="toggle('${id}','blockAnimal_${i}',${current})">
+      ${animals[i]} ${current?'BLOCK':'ALLOW'}
+      </button>
+    `;
   }
 
+  return html;
+}
+
+function setValue(id,field,value){
+  database.ref("devices/"+id).update({
+    [field]: value
+  });
+}
 </script>
 
 </body>
